@@ -1,6 +1,11 @@
 # loga
 
-Code seperated from repo neel/prova
+Loga is an experimental tool for extracting log message templates and placeholders from raw log files, 
+without requiring structured or labeled training data or hand-written extraction rules. It performs 
+a pipeline of sequence-alignment–based operations to align log messages and the patterns derived from them.
+
+> Code extracted and refactored from the `neel/prova` repository.
+
 
 ## Usage
 
