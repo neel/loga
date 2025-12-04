@@ -2,6 +2,18 @@
 
 Code seperated from repo neel/prova
 
+## Usage
+
+loga is a command line application. Only necessary input is the log file. 
+It is assumed that the logfile is a sequence of ASCII messages seperated by new line characters.
+A terminal that supports ANSI colors is necessary to view the output.
+
+```bash
+./loga Logfile.log
+```
+
+
+
 ## Building
 
 This project can be built in two ways:
@@ -29,18 +41,18 @@ C/C++ libraries:
 - igraph
 ---
 
-## Build with system packages (no vcpkg)
+### Build with system packages (no vcpkg)
 
 Install dependencies:
 
-### Ubuntu 
+##### Ubuntu 
 
 ```bash
 sudo apt update
 sudo apt install build-essential cmake git libboost-thread-dev libboost-program-options-dev libarmadillo-dev libcereal-dev libigraph-dev
 ```
 
-### Arch Linux
+##### Arch Linux
 
 ```bash
 sudo pacman -Syu
@@ -48,36 +60,27 @@ sudo pacman -S base-devel cmake git boost cereal igraph
 yay -S armadillo
 ```
 
-### Compile 
+#### Compile 
 
 ```bash
 git clone https://github.com/neel/loga.git
 cd loga
-
 mkdir build
 cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build .
 ```
 
-## Build using vcpkg
+### Build using vcpkg
 
 ```bash
 git clone https://github.com/microsoft/vcpkg.git
+
+./bootstrap-vcpkg.sh   # Linux or Mac
+.\bootstrap-vcpkg.bat  # Windows
 ```
 
-#### Linux / macOS:
-```
-./bootstrap-vcpkg.sh
-```
-
-#### Windows (PowerShell):
-```
-.\bootstrap-vcpkg.bat
-```
-
-
-### Compile 
+#### Compile 
 
 ```bash
 git clone https://github.com/neel/loga.git
