@@ -1,4 +1,5 @@
 #include <loga/pattern_sequence.h>
+#include <format>
 
 std::ostream& prova::loga::operator<<(std::ostream& stream, const prova::loga::pattern_sequence& pat){
     return print_pattern(stream, pat);

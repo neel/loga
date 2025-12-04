@@ -98,8 +98,7 @@ struct automata{
 
     void build();
 
-    template <typename ValueT>
-    void generialize(arma::Mat<ValueT>& coverage_mat, arma::Mat<ValueT>& capture_mat, bool skip = false) {
+    void generialize(arma::dmat& coverage_mat, arma::imat& capture_mat, bool skip = false) {
         coverage_mat.set_size(_pseqs.size(), _pseqs.size());
         capture_mat.set_size(_pseqs.size(), _pseqs.size());
         coverage_mat.fill(0);
@@ -118,7 +117,7 @@ struct automata{
                 auto ref_finish = _terminals.at(j).second;
 
                 generialization_result result = automata::directional_partial_generialize(_graph, base_start, pseq_ref, j, skip);
-                std::size_t coverage = 0, capture = 0;
+                std::size_t capture = 0;
                 for (auto& e : result.etrace) {
                     if (e.edge._type == segment_edge::placeholder) {
                         capture += e.edge._captured.size();
@@ -161,40 +160,50 @@ struct automata{
                 }
             }
         }
-        for(std::size_t i = 0; i < _pseqs.size(); ++i) {
-            vertex_type start  = _terminals.at(i).first;
-            vertex_type finish = _terminals.at(i).second;
+        for(std::size_t base_id = 0; base_id < _pseqs.size(); ++base_id) {
+            vertex_type start  = _terminals.at(base_id).first;
+            vertex_type finish = _terminals.at(base_id).second;
             vertex_type v = start;
 
-            std::set<std::size_t> aligned_references;
-            while(v != finish) {
-                std::set<std::size_t> current_references;
+            std::map<std::size_t, std::size_t> ref_longest_run;
+            while(true){
                 edge_type base_e;
                 bool base_found = false;
+                std::set<std::size_t> current_refs;
                 for(auto [ei, ei_end] = boost::out_edges(v, _graph); ei != ei_end; ++ei) {
                     const segment_edge& ep = _graph[*ei];
-                    if(ep._id != i) {
-                        current_references.insert(ep._id);
+                    if(ep._id != base_id) {
+                        current_refs.insert(ep._id);
                     } else {
                         base_e = *ei;
                         base_found = true;
                     }
                 }
-
-                assert(base_found);
-
-                if(v == start) {
-                    aligned_references = current_references;
-                } else {
-                    std::erase_if(aligned_references, [&](std::size_t v){
-                        return !current_references.contains(v);
-                    });
+                for(std::size_t ref_id: current_refs) {
+                    vertex_type t = boost::target(base_e, _graph);
+                    ref_longest_run[ref_id] = t;
                 }
 
+                if (v == finish) {
+                    break;
+                }
+
+                // For all non-finish vertices we expect exactly one base edge.
+                assert(base_found);
                 v = boost::target(base_e, _graph);
-            }
-            for(std::size_t c: aligned_references) {
-                coverage_mat(c, i) = 1;
+            };
+
+            for(auto [ref_id, last_base_vertex]: ref_longest_run) {
+                std::size_t base_last_count   = _graph[last_base_vertex]._count;
+                std::size_t base_finish_count = _graph[finish]._count;
+
+                if(!skip) {
+                    // std::cout << std::format("{} <> {}: base_last_count: {}, base_finish_count: {}", base_id, ref_id, base_last_count, base_finish_count) << std::endl;
+                    coverage_mat(base_id, ref_id) = (base_last_count == base_finish_count);
+                } else {
+                    double ref_coverage     =  double(base_last_count) / double(base_finish_count);
+                    coverage_mat(base_id, ref_id) = ref_coverage;
+                }
             }
         }
     }
@@ -494,18 +503,43 @@ struct automata{
                         last_v = x_last_v;
                     }
                 } else {
-                    if(pattern_graph[last_v]._finish) {
-                        // reached finish vertex of the base graph
-                        // base_type == segment_edge::placeholder || ref_type == prova::loga::zone::placeholder -> at least one is a placeholder
-                        // if sit == send
-                        //     send serves as the representative of finish vertex
-                        //     both ends at the same time therefore aligned
-                        // else
-                        //     not enough evidence to call them aligned
+                    // situation:
+                    //      at least either of base or reference is a placeholder
+                    //      couldn't align any constant lookahead
+                    //
+                    // possibilities:
+                    //      aligned -> rest of base is eaten by the reference placeholder      | if reference placeholder is the last reference segment
+                    //      aligned -> rest of reference is eaten by base placeholder          | if base placeholder is the last edge
+                    //    unaligned -> unmatched constant lookahead stoped run_base or run_ref | otherwise
+
+                    auto t_last_v = last_v;
+                    if(!pattern_graph[last_v]._finish) {
+                        std::tie(last_e, t_last_v) = next_base(t_last_v);
+                    }
+
+                    if(ref_type == prova::loga::zone::placeholder && sit == send) {
+                        if(pattern_graph[last_v]._finish || pattern_graph[t_last_v]._finish) {
+                            last_v  = t_last_v;
+                            aligned = true;
+                        }
+                    } else if(base_type == segment_edge::placeholder && pattern_graph[last_v]._finish) {
                         if(sit == send) {
                             aligned = true;
                         }
                     }
+
+                    // if(pattern_graph[last_v]._finish) {
+                    //     // reached finish vertex of the base graph
+                    //     // base_type == segment_edge::placeholder || ref_type == prova::loga::zone::placeholder -> at least one is a placeholder
+                    //     // if sit == send
+                    //     //     send serves as the representative of finish vertex
+                    //     //     both ends at the same time therefore aligned
+                    //     // else
+                    //     //     not enough evidence to call them aligned
+                    //     if(sit == send) {
+                    //         aligned = true;
+                    //     }
+                    // }
                 }
                 if(!aligned) break;
                 else {

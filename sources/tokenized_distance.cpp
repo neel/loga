@@ -1,5 +1,6 @@
 #include <loga/tokenized_distance.h>
 #include <thread>
+#include <span>
 #include <boost/asio.hpp>
 #include <armadillo>
 #include <boost/graph/adjacency_list.hpp>

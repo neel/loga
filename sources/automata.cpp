@@ -749,7 +749,8 @@ prova::loga::automata::generialization_result &prova::loga::automata::generializ
     tokens         = next.tokens;
     base_progress += next.base_progress;
     ref_progress  += next.ref_progress;
-    etrace.append_range(next.etrace);
+    for(const edge_intent& e: next.etrace)
+        etrace.push_back(e);
 
     return *this;
 }

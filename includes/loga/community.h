@@ -251,6 +251,15 @@ std::size_t detect_communities(const GraphT& G_in, community_detection_algorithm
     using vertex_type   = typename boost::graph_traits<graph_type>::vertex_descriptor;
     using labels_type   = std::map<vertex_type, std::size_t>;
 
+    std::size_t edge_count = boost::num_edges(G_in);
+    if(edge_count == 0) {
+        std::size_t l = 0;
+        for (auto vp = boost::vertices(G_in); vp.first != vp.second; ++vp.first) {
+            vlabels[*vp.first] = l++;
+        }
+        return l;
+    }
+
     if(algo == community_detection_algorithm::louvain) {
         using directed_tag = typename boost::graph_traits<graph_type>::directed_category;
         constexpr bool is_directed_v = boost::is_convertible<directed_tag, boost::directed_tag>::value;
@@ -287,7 +296,27 @@ std::size_t detect_communities(const GraphT& G_in, community_detection_algorithm
         }
         return n_components;
     } else if(algo == community_detection_algorithm::weakly_connected){
-        // Not implemented yet
+        using directed_tag = typename boost::graph_traits<graph_type>::directed_category;
+        constexpr bool is_directed_v = boost::is_convertible<directed_tag, boost::directed_tag>::value;
+        if(!is_directed_v) {
+            return detect_communities(G_in, community_detection_algorithm::strongly_connected, vlabels);
+        } else {
+            using ugraph_type  = typename bgl_helper<GraphT>::undirected_type;
+            using uvertex_type = typename boost::graph_traits<ugraph_type>::vertex_descriptor;
+            using ulabels_type = std::map<uvertex_type, std::size_t>;
+            using uvmap_type   = std::map<uvertex_type, vertex_type>;
+
+            ulabels_type ulabels;
+            uvmap_type   uvmap;
+
+            ugraph_type G_local = make_undirected(G_in, uvmap);
+            std::size_t count = detect_communities(G_local, community_detection_algorithm::strongly_connected, ulabels);
+            for(auto [u, c]: ulabels) {
+                auto v = uvmap[u];
+                vlabels[v] = c;
+            }
+            return count;
+        }
     }
 
     return 0;

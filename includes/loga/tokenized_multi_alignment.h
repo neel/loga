@@ -44,7 +44,7 @@ public:
 public:
     tokenized_multi_alignment(const tokenized_collection& collection, const tokenized_alignment::matrix_type& matrix, const filter_type& filter, std::size_t base_index);
     tokenized_multi_alignment(const tokenized_collection& collection, const tokenized_alignment::matrix_type& matrix, std::size_t base_index);
-    region_map align() const;
+    region_map align(double cutoff = 0.9f) const;
 
     template <typename Iterator, typename PathF>
     region_map align(Iterator begin, Iterator end, PathF path_f) const {

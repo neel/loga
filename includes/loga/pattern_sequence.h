@@ -5,9 +5,12 @@
 #include <loga/zone.h>
 #include <numeric>
 #include <vector>
-#include <format>
 
 namespace prova::loga{
+
+struct pattern_sequence;
+
+std::ostream& operator<<(std::ostream& stream, const pattern_sequence& pat);
 
 struct pattern_sequence {
     struct segment {

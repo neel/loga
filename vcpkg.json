@@ -1,0 +1,15 @@
+{
+  "name": "loga",
+  "version-string": "0.1.0",
+  "dependencies": [
+    "boost-thread",
+    "boost-program-options",
+    "boost-graph",
+    "boost-asio",
+    "boost-icl",
+    "armadillo",
+    "cereal",
+    "igraph"
+  ],
+  "builtin-baseline": "4c4abc2e8727221ede31021349386dac674309b0"
+}

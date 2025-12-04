@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.6)
 
-project(provenance-alignment)
+project(loga)
 
 set(Boost_NO_BOOST_CMAKE        ON  CACHE BOOL "Use FindBoost module, not BoostConfig")
 set(Boost_USE_STATIC_LIBS       OFF)
@@ -15,13 +15,20 @@ if (MSVC)
   set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
-find_package(Boost REQUIRED COMPONENTS filesystem serialization process thread program_options)
-find_package(nlohmann_json REQUIRED)
-
-find_package(Armadillo REQUIRED)
-find_package(mlpack 4.0 REQUIRED)
+find_package(Boost REQUIRED COMPONENTS thread program_options)
+find_package(Armadillo CONFIG REQUIRED)
 find_package(cereal REQUIRED)
 find_package(igraph REQUIRED)
+
+if(Armadillo_FOUND AND NOT TARGET Armadillo::Armadillo)
+  add_library(Armadillo::Armadillo INTERFACE IMPORTED)
+  set_target_properties(
+    Armadillo::Armadillo
+    PROPERTIES
+      INTERFACE_LINK_LIBRARIES "${ARMADILLO_LIBRARIES}"
+      INTERFACE_INCLUDE_DIRECTORIES "${ARMADILLO_INCLUDE_DIRS}"
+  )
+endif()
 
 include_directories(includes)
 
@@ -36,7 +43,6 @@ set(SOURCES
   sources/path.cpp
   sources/zone.cpp
   sources/distance.cpp
-  sources/cluster.cpp
   sources/group.cpp
   sources/bio_alignment.cpp
   sources/tokenized_collection.cpp
@@ -65,7 +71,6 @@ set(INCLUDES
   includes/loga/zone.h
   includes/loga/package.h
   includes/loga/distance.h
-  includes/loga/cluster.h
   includes/loga/group.h
   includes/loga/bio_alignment.h
   includes/loga/token.h
@@ -82,40 +87,40 @@ set(INCLUDES
   includes/loga/outliers.h
 )
 
-add_library(prova-loga SHARED ${SOURCES} ${INCLUDES})
-set_property(TARGET prova-loga PROPERTY CXX_STANDARD 23)
-target_link_libraries(prova-loga PUBLIC Boost::headers nlohmann_json::nlohmann_json igraph::igraph)
-target_link_libraries(prova-loga PRIVATE Boost::filesystem Boost::process Boost::thread Boost::program_options cereal::cereal ${MLPACK_LIBRARIES} ${ARMADILLO_LIBRARIES})
-if (MSVC)
-  target_compile_definitions(prova-loga PRIVATE NOMINMAX _WINSOCKAPI_ WIN32_LEAN_AND_MEAN)
-  target_compile_options(prova-loga PRIVATE /FI${CMAKE_SOURCE_DIR}/tools/includes/prova/win32_winsock_shim.hpp)
-  target_compile_definitions(prova-loga PRIVATE $<$<PLATFORM_ID:Windows>:_WINSOCKAPI_> $<$<PLATFORM_ID:Windows>:WIN32_LEAN_AND_MEAN>)
+add_library(loga_lib SHARED ${SOURCES} ${INCLUDES})
+set_property(TARGET loga_lib PROPERTY CXX_STANDARD 20)
+target_link_libraries(loga_lib PUBLIC Boost::headers igraph::igraph)
+target_link_libraries(loga_lib PRIVATE Boost::thread cereal::cereal Armadillo::Armadillo)
+set_target_properties(loga_lib PROPERTIES OUTPUT_NAME "loga")
+if (WIN32)
+    set_target_properties(loga_lib PROPERTIES ARCHIVE_OUTPUT_NAME "loga_lib")
 endif()
 
-add_executable(loga sources/main.cpp)
-set_property(TARGET loga PROPERTY CXX_STANDARD 23)
-target_link_libraries(loga PRIVATE Boost::serialization Boost::thread Boost::program_options nlohmann_json::nlohmann_json prova-loga ${MLPACK_LIBRARIES} ${ARMADILLO_LIBRARIES})
-if (MSVC)
-  target_compile_definitions(loga PRIVATE NOMINMAX _WINSOCKAPI_ WIN32_LEAN_AND_MEAN)
-  target_compile_options(loga PRIVATE /FI${CMAKE_SOURCE_DIR}/tools/includes/prova/win32_winsock_shim.hpp)
-  target_compile_definitions(loga PRIVATE $<$<PLATFORM_ID:Windows>:_WINSOCKAPI_> $<$<PLATFORM_ID:Windows>:WIN32_LEAN_AND_MEAN>)
+add_executable(loga_exe sources/main.cpp)
+set_property(TARGET loga_exe PROPERTY CXX_STANDARD 20)
+target_link_libraries(loga_exe PRIVATE Boost::headers Boost::thread Boost::program_options Armadillo::Armadillo loga_lib)
+set_property(TARGET loga_exe PROPERTY OUTPUT_NAME loga)
+
+if(APPLE)
+  set_target_properties(loga_exe PROPERTIES
+      INSTALL_RPATH "@loader_path/../${CMAKE_INSTALL_LIBDIR}"
+      BUILD_RPATH   "@loader_path/../${CMAKE_INSTALL_LIBDIR}"
+  )
+elseif(UNIX)
+  set_target_properties(loga_exe PROPERTIES
+      INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}"
+      BUILD_RPATH   "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}"
+  )
 endif()
 
-add_executable(tloga sources/tokenized.cpp)
-set_property(TARGET tloga PROPERTY CXX_STANDARD 23)
-target_link_libraries(tloga PRIVATE Boost::serialization Boost::thread Boost::program_options nlohmann_json::nlohmann_json prova-loga ${MLPACK_LIBRARIES} ${ARMADILLO_LIBRARIES})
-if (MSVC)
-  target_compile_definitions(tloga PRIVATE NOMINMAX _WINSOCKAPI_ WIN32_LEAN_AND_MEAN)
-  target_compile_options(tloga PRIVATE /FI${CMAKE_SOURCE_DIR}/tools/includes/prova/win32_winsock_shim.hpp)
-  target_compile_definitions(tloga PRIVATE $<$<PLATFORM_ID:Windows>:_WINSOCKAPI_> $<$<PLATFORM_ID:Windows>:WIN32_LEAN_AND_MEAN>)
-endif()
+include(GNUInstallDirs)
 
+install(TARGETS loga_lib loga_exe
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
 
-add_executable(xloga sources/cross.cpp)
-set_property(TARGET xloga PROPERTY CXX_STANDARD 23)
-target_link_libraries(xloga PRIVATE Boost::serialization Boost::thread Boost::program_options nlohmann_json::nlohmann_json prova-loga ${MLPACK_LIBRARIES} ${ARMADILLO_LIBRARIES})
-if (MSVC)
-  target_compile_definitions(xloga PRIVATE NOMINMAX _WINSOCKAPI_ WIN32_LEAN_AND_MEAN)
-  target_compile_options(xloga PRIVATE /FI${CMAKE_SOURCE_DIR}/tools/includes/prova/win32_winsock_shim.hpp)
-  target_compile_definitions(xloga PRIVATE $<$<PLATFORM_ID:Windows>:_WINSOCKAPI_> $<$<PLATFORM_ID:Windows>:WIN32_LEAN_AND_MEAN>)
-endif()
+install(FILES ${INCLUDES}
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/loga
+)

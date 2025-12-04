@@ -5,7 +5,7 @@
 #include <iomanip>
 #include <numeric>
 
-prova::loga::tokenized_multi_alignment::region_map prova::loga::tokenized_multi_alignment::align() const {
+prova::loga::tokenized_multi_alignment::region_map prova::loga::tokenized_multi_alignment::align(double cutoff) const {
     interval_map intervals;
     region_map regions;
     std::set<std::size_t> excluded;
@@ -58,10 +58,22 @@ prova::loga::tokenized_multi_alignment::region_map prova::loga::tokenized_multi_
         // postcondition: all values in the regions are empty interval_set
 
         // const prova::loga::tokenized& base_ref = _collection.at(_base_index);
+        double consensus_requirement = cutoff;
+        assert(consensus_requirement > 0.0 && consensus_requirement < 1.0);
+        double consensus_leftover    = 1 - consensus_requirement;
+        std::size_t max_possible     = (_filter.size()-1) - excluded.size();
+        std::size_t threshold        = 0;
+        if(max_possible <= 2)
+            threshold = max_possible;
+        else {
+            threshold        = max_possible > std::floor(1.0/consensus_leftover)
+                                    ? std::floor(0.9 * max_possible)
+                                    : max_possible - 2;
+        }
+
         std::set<std::size_t> accidentals;
         for(const auto& iv: intervals) {
             std::size_t num_references = iv.second.size();
-            std::size_t max_possible = (_filter.size()-1) - excluded.size();
             if(num_references == max_possible) {
                 std::size_t len = iv.first.upper() - iv.first.lower();
                 std::set<zone> zones;
@@ -79,9 +91,8 @@ prova::loga::tokenized_multi_alignment::region_map prova::loga::tokenized_multi_
                 std::size_t offset = iv.first.lower();
                 std::size_t len = iv.first.upper() - iv.first.lower();
                 std::string substr = _collection.at(0).subset(offset, len).view();
-                std::size_t threshold = std::floor(0.9 * max_possible);
-                std::cout << "not voted: " << substr << " " << "votes: " << num_references << " threshold " << threshold << std::endl;
                 if(num_references > threshold) {
+                    std::cout << "not voted: " << substr << " " << "votes: " << num_references << " threshold " << threshold << " max_possible " << max_possible<< std::endl;
                     std::size_t max = _collection.count()+1;
                     std::vector<std::size_t> responded_refs(_collection.count(), max);
                     responded_refs[_base_index] = _base_index;
@@ -147,128 +158,6 @@ prova::loga::tokenized_multi_alignment::region_map prova::loga::tokenized_multi_
     return result;
 
 }
-
-// prova::loga::multi_alignment::region_map prova::loga::multi_alignment::fixture_word_boundary(const region_map &regions) const{
-//     // ensures that a matched region is surrounded by non-word characters including end of line
-//     static std::string alphabets = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_:/.@";
-//     region_map result;
-//     for(auto& candidate: regions) {
-//         std::size_t candidate_id = candidate.first;
-//         const interval_set& intervals = candidate.second;
-//         std::vector<std::pair<region_type, zone>> updated_regions;
-//         std::size_t squeeze_left_next = 0;
-//         for(auto& z: intervals) {
-//             auto& region = z.first;
-//             const std::string& ref = _collection.at(candidate_id);
-//             // std::cout << z.first << " <" << ref.substr(region.lower(), region.upper()-region.lower()) << "> " << tag << std::endl;
-//             std::size_t len = region.upper()-region.lower();
-//             auto begin = ref.begin()+region.lower();
-//             std::string_view view{begin, begin+len};
-//             prova::loga::zone tag = *z.second.cbegin();
-//             if(tag == prova::loga::zone::constant) {
-//                 // { check right to find
-//                 bool eol = (region.upper() == ref.size());
-//                 auto rear = std::ranges::find_if_not(view.rbegin(), view.rend(), [&](auto const& x) {
-//                     return std::ranges::find(alphabets, x) != alphabets.end();
-//                 });
-//                 std::size_t dist_rear = eol ? 0 : std::distance(view.rbegin(), rear);
-//                 // }
-
-//                 // { check left to find
-//                 auto front = std::ranges::find_if_not(view.begin(), view.end(), [&](auto const& x) {
-//                     return std::ranges::find(alphabets, x) != alphabets.end();
-//                 });
-//                 std::size_t dist_front = std::distance(view.begin(), front);
-//                 // }
-
-//                 // check lookback if previous was constant too
-//                 if(updated_regions.size() > 0) {
-//                     auto& last = updated_regions.back().first;
-//                     auto last_zone = updated_regions.back().second;
-//                     if(last_zone == prova::loga::zone::constant) {
-//                         // this constant will be converted to placeholder and glued to the next placeholder
-//                         squeeze_left_next += view.size();
-//                         continue;
-//                     }
-//                 }
-
-//                 // Observations:
-//                 //      {PPPP}{CCC CCC}{QQQQ}    -> {PPPPCCC}{ }{CCCQQQQ}       : dist_rear >  0 && dist_front >  0
-//                 //                                                                                                      => {p.l, p.u+dist_front}, {c.l+dist_front, c.u-dist_rear}, {n.l - dist_rear, n.u}
-//                 //      {PPPP}{CCC CC CCC}{QQQQ} -> {PPPPCCC}{ CC }{CCCQQQQ}    : dist_rear >  0 && dist_front >  0
-//                 //                                                                                                      => {p.l, p.u+dist_front}, {c.l+dist_front, c.u-dist_rear}, {n.l - dist_rear, n.u}
-//                 //      {PPPP}{ CCCCCC}{QQQQ}    -> {PPPP}{ }{CCCCCCQQQQ}       : dist_rear >  0 && dist_front == 0
-//                 //                                                                                                      => {p.l, p.u+dist_front}, {c.l+dist_front, c.u-dist_rear}, {n.l - dist_rear, n.u}
-//                 //      {PPPP}{CCCCCC }{QQQQ}    -> {PPPPCCCCCC}{ }{QQQQ}       : dist_rear == 0 && dist_front >  0
-//                 //                                                                                                      => {p.l, p.u+dist_front}, {c.l+dist_front, c.u-dist_rear}, {n.l - dist_rear, n.u}
-//                 //      {PPP}{ CCC }{QQQ}        -> {PPP}{ CCC }{QQQ}           : dist_rear == 0 && dist_front == 0
-//                 //                                                                                                      => pcn
-//                 //      {PPP}{CCC}{QQQ}          -> {PPPCCCQQQ}                 : dist_rear == dist_front == view.size()
-//                 //                                                                                                      => remove p; skip c; {n.l-view.size()-p.size(), n.u}
-
-
-//                 if(dist_rear == view.size() && dist_front == view.size()){
-//                     prova::loga::zone last_zone = prova::loga::zone::constant;
-//                     std::size_t last_len = 0;
-//                     if(updated_regions.size() > 0) {
-//                         last_zone = updated_regions.back().second;
-//                         last_len   = updated_regions.back().first.upper() - updated_regions.back().first.lower();
-//                     }
-
-//                     if(last_zone == prova::loga::zone::placeholder){
-//                         updated_regions.pop_back();
-//                         squeeze_left_next = view.size()+last_len;
-//                     } else {
-//                         updated_regions.push_back(std::make_pair(region, zone::constant));
-//                     }
-//                     continue;
-//                 }
-
-//                 if(dist_rear > 0 || dist_front > 0) {
-//                     if(dist_front > 0 && !updated_regions.empty()) {
-//                         auto& last = updated_regions.back().first;
-//                         last = region_type::right_open(last.lower(), last.upper()+dist_front);
-//                     }
-
-//                     if(dist_rear > 0) {
-//                         squeeze_left_next = dist_rear;
-//                     }
-//                     auto updated_region = region;
-//                     updated_region = region_type::right_open(updated_region.lower()+dist_front, updated_region.upper()-dist_rear);
-//                     updated_regions.push_back(std::make_pair(updated_region, zone::constant));
-//                 } else {
-//                     updated_regions.push_back(std::make_pair(region, zone::constant));
-//                 }
-//             } else {
-//                 prova::loga::zone last_zone = prova::loga::zone::constant;
-//                 std::size_t last_lb = 0;
-//                 if(updated_regions.size() > 0) {
-//                     last_zone = updated_regions.back().second;
-//                     last_lb   = updated_regions.back().first.lower();
-//                 }
-
-//                 std::size_t lb = (last_zone == prova::loga::zone::constant) ? region.lower()-squeeze_left_next : last_lb;
-//                 // { check if there is any distance carried forward by the previous region
-//                 auto updated_region = region_type::right_open(lb, region.upper());
-//                 squeeze_left_next = 0;
-//                 // }
-//                 updated_regions.push_back(std::make_pair(updated_region, zone::placeholder));
-//             }
-//         }
-
-//         interval_set updated_intervals;
-//         for(const auto& pair: updated_regions) {
-//             std::set<zone> zones;
-//             zones.insert(pair.second);
-//             updated_intervals.add(std::make_pair(pair.first, zones));
-//         }
-
-//         result.insert(std::make_pair(candidate_id, updated_intervals));
-//     }
-
-//     return result;
-// }
-
 
 prova::loga::tokenized_multi_alignment::tokenized_multi_alignment(const tokenized_collection &collection, const tokenized_alignment::matrix_type &matrix, const filter_type &filter, std::size_t base_index): _collection(collection), _matrix(matrix), _filter(filter), _base_index(base_index) {}
 
