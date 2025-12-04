@@ -36,32 +36,41 @@ jobs:
         with:
           submodules: recursive  # harmless even if you don't have submodules
 
-      # CMake + Ninja (we use Ninja everywhere to keep it uniform)
+      - name: Setup MSVC (Developer Command Prompt)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Install GCC 13 (Ubuntu only)
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+          sudo apt-get update
+          sudo apt-get install -y g++-13
+
       - name: Install CMake (non-Windows)
         if: runner.os != 'Windows'
         uses: lukka/get-cmake@latest
 
-      - name: Setup Ninja (Windows)
-        if: runner.os == 'Windows'
-        uses: ashutoshvarma/setup-ninja@v1.1
-
-      # Setup vcpkg, using your vcpkg.json manifest (and builtin-baseline)
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
           vcpkgDirectory: ${{ env.VCPKG_ROOT }}
-          # Let the action locate your vcpkg.json and use its builtin-baseline
           vcpkgJsonGlob: '**/vcpkg.json'
-          # We let CMake drive `vcpkg install` through the toolchain file,
-          # so we keep runVcpkgInstall at its default (false).
 
       - name: Configure (CMake)
         shell: bash
         run: |
+          # Use GCC 13 on Ubuntu; default compilers elsewhere
+          if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
+            export CC=gcc-13
+            export CXX=g++-13
+          fi
           cmake -S . -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
-
+            
       - name: Build
         shell: bash
         run: |
