@@ -12,6 +12,7 @@ A terminal that supports ANSI colors is necessary to view the output.
 ./loga Logfile.log
 ```
 
+![Apache_2k log](https://github.com/user-attachments/assets/2e541f24-e888-4319-a07e-8db74eec2e30)
 
 
 ## Building
