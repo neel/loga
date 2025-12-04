@@ -33,11 +33,7 @@ The CMake build itself is the same in both cases; the only difference is how you
 
 ### Dependencies
 
-Common requirements:
-
-- CMake
-- A C++20 compiler 
-- Git 
+Common requirements: CMake, C++20 compiler 
 
 C/C++ libraries:
 
