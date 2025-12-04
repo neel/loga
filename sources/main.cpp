@@ -174,8 +174,10 @@ int main(int argc, char** argv) {
         throw boost::program_options::error("missing required positional argument <path>");
     }
 
-    std::string log_name  = vm["input"].as<std::string>();
-    std::string base_name = log_name+"_d";
+    std::filesystem::path log_path = vm["input"].as<std::string>();
+
+    std::string log_name  = log_path.filename().string();
+    std::string base_name = std::filesystem::path(log_name).filename().string()+"_d";
     std::filesystem::path output_dir(base_name);
     {
         std::error_code ec;
@@ -197,7 +199,7 @@ int main(int argc, char** argv) {
     std::filesystem::path phase2_graphml_file_path = output_dir / std::format("{}.components.graphml", log_name);
 
     prova::loga::tokenized_collection collection;
-    std::ifstream log(log_name);
+    std::ifstream log(log_path);
     collection.parse(log);
 
     prova::loga::tokenized_distance distance(collection.count());
@@ -385,7 +387,7 @@ int main(int argc, char** argv) {
         }
 
         if(outliers.size() > 0){
-            std::cout << prova::loga::colors::bright_red << "    Excluded " << outliers.size() << std::fixed << std::setprecision(2) << lof.t() << prova::loga::colors::reset << std::endl;
+            std::cout << prova::loga::colors::bright_red << "    Excluded " << outliers.size() /*<< std::fixed << std::setprecision(2) << lof.t() << prova::loga::colors::reset*/ << std::endl;
             for(const std::string& outlier: outliers){
                 std::cout << prova::loga::colors::bright_red << "    X| " << prova::loga::colors::reset << outlier << std::endl;
             }
