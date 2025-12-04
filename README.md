@@ -35,7 +35,7 @@ Common requirements:
 
 C/C++ libraries:
 
-- Boost (`thread`, `program_options`)
+- Boost (`icl`, `graph`, `asio`, `program_options`)
 - Armadillo
 - cereal
 - igraph
@@ -49,7 +49,7 @@ Install dependencies:
 
 ```bash
 sudo apt update
-sudo apt install build-essential cmake git libboost-thread-dev libboost-program-options-dev libarmadillo-dev libcereal-dev libigraph-dev
+sudo apt install build-essential cmake git libboost-program-options-dev libarmadillo-dev libcereal-dev libigraph-dev
 ```
 
 ##### Arch Linux
