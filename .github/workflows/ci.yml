@@ -18,11 +18,11 @@ jobs:
       matrix:
         include:
           - os: ubuntu-22.04
-            triplet: x64-linux      # static libs by default on Linux
+            triplet: x64-linux
           - os: macos-latest
-            triplet: x64-osx        # static libs by default on macOS
+            triplet: x64-osx
           - os: windows-latest
-            triplet: x64-windows-static-md  # static vcpkg libs, dynamic CRT
+            triplet: x64-windows
 
     runs-on: ${{ matrix.os }}
 
@@ -42,12 +42,12 @@ jobs:
         with:
           arch: x64
 
-      - name: Install GCC 13 (Ubuntu only)
+      - name: Install GCC 13 + gfortran (Ubuntu only)
         if: matrix.os == 'ubuntu-22.04'
         run: |
           sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
           sudo apt-get update
-          sudo apt-get install -y g++-13
+          sudo apt-get install -y g++-13 gfortran
 
       - name: Install CMake (non-Windows)
         if: runner.os != 'Windows'
