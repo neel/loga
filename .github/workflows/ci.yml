@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+env:
+  # vcpkg root inside the checkout
+  VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+  # Enable manifest mode & dependency graph features
+  VCPKG_FEATURE_FLAGS: manifests,dependencygraph
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            triplet: x64-linux      # static libs by default on Linux
+          - os: macos-latest
+            triplet: x64-osx        # static libs by default on macOS
+          - os: windows-latest
+            triplet: x64-windows-static-md  # static vcpkg libs, dynamic CRT
+
+    runs-on: ${{ matrix.os }}
+
+    env:
+      VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }}
+      VCPKG_DEFAULT_HOST_TRIPLET: ${{ matrix.triplet }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive  # harmless even if you don't have submodules
+
+      # CMake + Ninja (we use Ninja everywhere to keep it uniform)
+      - name: Install CMake (non-Windows)
+        if: runner.os != 'Windows'
+        uses: lukka/get-cmake@latest
+
+      - name: Setup Ninja (Windows)
+        if: runner.os == 'Windows'
+        uses: ashutoshvarma/setup-ninja@v1.1
+
+      # Setup vcpkg, using your vcpkg.json manifest (and builtin-baseline)
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: ${{ env.VCPKG_ROOT }}
+          # Let the action locate your vcpkg.json and use its builtin-baseline
+          vcpkgJsonGlob: '**/vcpkg.json'
+          # We let CMake drive `vcpkg install` through the toolchain file,
+          # so we keep runVcpkgInstall at its default (false).
+
+      - name: Configure (CMake)
+        shell: bash
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+
+      - name: Build
+        shell: bash
+        run: |
+          cmake --build build --config Release -- -v
+
+      - name: Install into stage/
+        shell: bash
+        run: |
+          cmake --install build --config Release --prefix "${PWD}/stage"
+          echo "Installed tree:"
+          find stage -maxdepth 3 -type f || true
+
+      - name: Upload stage as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: loga-${{ matrix.os }}-stage
+          path: stage
