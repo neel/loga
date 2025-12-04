@@ -1,9 +1,10 @@
+#include <thread>
+#include <format>
 #include <loga/alignment.h>
 #include <loga/collection.h>
 #include <loga/segment.h>
 #include <loga/graph.h>
 #include <loga/path.h>
-#include <thread>
 #include <boost/asio.hpp>
 
 prova::loga::alignment::alignment(const collection &collection): _collection(collection) {}

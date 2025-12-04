@@ -1,4 +1,5 @@
 #include <loga/automata.h>
+#include <format>
 
 void prova::loga::automata::build() {
     for(std::size_t i = 0; i < _pseqs.size(); ++i) {
