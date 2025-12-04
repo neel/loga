@@ -82,14 +82,14 @@ prova::loga::index prova::loga::operator-(const prova::loga::index& idx, std::si
 
 void prova::loga::index::move_all(std::int64_t delta){
     std::for_each(_positions.begin(), _positions.end(), [delta](std::size_t& v){
-        assert(delta > 0 || v >= -delta);
+        assert(delta > 0 || v >= std::size_t(-delta));
         v = v+delta;
     });
 }
 
 void prova::loga::index::move(std::size_t dim, int64_t delta){
     std::size_t& v = _positions.at(dim);
-    assert(delta > 0 || v >= -delta);
+    assert(delta > 0 || v >= std::size_t(-delta));
     v = v+delta;
 }
 

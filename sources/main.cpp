@@ -151,6 +151,7 @@ int main(int argc, char** argv) {
             ("cluster-algo,C",    boost::program_options::value<std::string>()->default_value("leiden"),     "Phase-1 clustering algorithm (leiden|louvain|components)")
             ("refine-algo,R",     boost::program_options::value<std::string>()->default_value("components"), "Phase-2 clustering algorithm (leiden|louvain|components)")
             ("threshold,T",       boost::program_options::value<double>()->default_value(0.9, "0.9"),        "threshold for minimum consensus in Phase-2")
+            ("outlier,L",         boost::program_options::value<double>()->default_value(1.5, "1.5"),        "threshold used for outlier detection")
         ;
         boost::program_options::positional_options_description p;
         p.add("input", 1);
@@ -189,6 +190,7 @@ int main(int argc, char** argv) {
     std::string cli_p1_algo         = vm["cluster-algo"].as<std::string>();
     std::string cli_p2_algo         = vm["refine-algo"] .as<std::string>();
     double      cli_p2_threshold    = vm["threshold"]   .as<double>();
+    double      cli_p1_outlier      = vm["outlier"]     .as<double>();
 
     std::filesystem::path archive_file_path        = output_dir / std::format("{}.1g.paths",           log_name);
     std::filesystem::path dist_file_path           = output_dir / std::format("{}.lev.dmat",           log_name);
@@ -288,7 +290,6 @@ int main(int argc, char** argv) {
 
         std::string cluster_name = std::format("C{}", c);
         std::cout << std::endl << prova::loga::colors::bright_yellow << "◪" << prova::loga::colors::reset << " Label: " << cluster_name << std::format(" ({})", count) << std::endl;
-        // std::cout << std::resetiosflags(std::ios::showbase) << std::right << std::setw(3) << "*" << min_matched_id << "|" << "\033[4m" << collection.at(min_matched_id) << "\033[0m" << std::resetiosflags(std::ios::showbase) << std::endl;
 
         prova::loga::tokenized_collection subcollection;
         std::vector<std::size_t> references;                                    // global ids of all items belonging to the same cluster
@@ -307,7 +308,7 @@ int main(int argc, char** argv) {
 
             std::vector<std::size_t> excluded;
             for (arma::uword i = 0; i < count; ++i) {
-                if(lof(i) >= 1.2f){
+                if(lof(i) >= cli_p1_outlier){
                     excluded.push_back(i);
                 }
                 confidence.push_back(lof(i));
