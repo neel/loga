@@ -570,8 +570,15 @@ struct automata{
         std::size_t ref_token_id   = 0;
         for(auto t_sit = begin; t_sit != sit; ++t_sit){
             ref_token_id += t_sit->tokens().count();
+            if(t_sit->tag() == prova::loga::zone::placeholder) {
+                ref_token_id += 1;
+            }
         }
         ref_token_id += tindex;
+        if(sit->tag() == prova::loga::zone::placeholder) {
+            ref_token_id += 1;
+        }
+
 
         static thread_local int depth = 0;
         ++depth;
@@ -618,6 +625,65 @@ struct automata{
             }
         };
 
+        auto print_ref = [&next_ref](std::ostream& stream, Iterator begin, Iterator x_sit, std::size_t x_tindex) -> std::ostream& {
+            auto t_sit = begin;
+            auto t_idx = 0;
+            while (true) {
+                if (t_sit == x_sit && t_idx > x_tindex) break;
+                if (t_sit == x_sit && t_idx == x_tindex) {
+                    if (t_sit->tag() == prova::loga::zone::constant)
+                        stream << t_sit->tokens().at(t_idx).view();
+                    else
+                        stream << "$";
+                    break;
+                }
+
+                if (t_sit->tag() == prova::loga::zone::constant)
+                    stream << t_sit->tokens().at(t_idx).view();
+                else
+                    stream << "$";
+
+                std::tie(t_sit, t_idx) = next_ref(t_sit, t_idx);
+            }
+            return stream;
+        };
+
+        auto print_base = [&pattern_graph, &next_base](std::ostream& stream, vertex_type x_last_v) -> std::ostream& {
+            vertex_type t_last_v = x_last_v;
+            edge_type   t_last_e;
+
+            std::size_t base_id = pattern_graph[t_last_v]._id;
+
+            std::vector<vertex_type> reverse_path;
+
+            while(!pattern_graph[t_last_v]._start){
+                bool edge_found = false;
+                edge_type e;
+                for(auto [ei, ei_end] = boost::in_edges(t_last_v, pattern_graph); ei != ei_end; ++ei) {
+                    const segment_edge& ep = pattern_graph[*ei];
+                    if(ep._id == base_id){
+                        e = *ei;
+                        edge_found = true;
+                        break;
+                    }
+                }
+                assert(edge_found);
+                reverse_path.push_back(t_last_v);
+                t_last_v = boost::source(e, pattern_graph);
+            }
+            assert(pattern_graph[t_last_v]._start);
+            for(auto it = reverse_path.rbegin(); it != reverse_path.rend(); ++it) {
+                auto v = *it;
+                stream << pattern_graph[v]._str;
+            }
+            return stream;
+        };
+
+        std::string indent(depth*2, ' ');
+
+        std::cout << indent << "base: "; print_base(std::cout, base_v) << std::endl;
+        std::cout << indent << "ref:  "; print_ref(std::cout, begin, sit, tindex) << std::endl;
+
         generialization_result result; // default constructor added
         if(memo.contains(key)) {
             result = memo.at(key);
@@ -647,8 +713,14 @@ struct automata{
             std::size_t result_ref_token_id   = 0;
             for(auto t_sit = begin; t_sit != r_sit; ++t_sit){
                 result_ref_token_id += t_sit->tokens().count();
+                if(t_sit->tag() == prova::loga::zone::placeholder) {
+                    result_ref_token_id += 1;
+                }
             }
-            result_ref_token_id += tindex;
+            result_ref_token_id += r_tindex;
+            if(r_sit->tag() == prova::loga::zone::placeholder) {
+                result_ref_token_id += 1;
+            }
             assert(result_ref_token_id >= ref_token_id);
             assert(pattern_graph[r_last_v]._count >= base_vertex_id);
         }
@@ -669,19 +741,26 @@ struct automata{
         generialization_result result_both;
 
         if(x_sit != send) {
+            std::cout << indent << "-+" << std::endl;
             result_ref      = formalized_directional_partial_piecewise_generialize(memo, pattern_graph, r_last_v, begin, x_sit, send, x_tindex, ref_id);
             ref_shift_gain  = std::min(result_ref.base_progress, result_ref.ref_progress);
+            std::cout << indent << "gain: " << ref_shift_gain << std::endl;
         }
 
         if(!pattern_graph[x_last_v]._finish) {
+            std::cout << indent << "+-" << std::endl;
             result_base     = formalized_directional_partial_piecewise_generialize(memo, pattern_graph, x_last_v, begin, r_sit, send, r_tindex, ref_id);
             base_shift_gain = std::min(result_base.base_progress, result_base.ref_progress);
+            std::cout << indent << "gain: " << base_shift_gain << std::endl;
         }
 
         if(x_sit != send && !pattern_graph[x_last_v]._finish) {
+            std::cout << indent << "++" << std::endl;
             result_both     = formalized_directional_partial_piecewise_generialize(memo, pattern_graph, x_last_v, begin, x_sit, send, x_tindex, ref_id);
             both_shift_gain = std::min(result_both.base_progress, result_both.ref_progress);
+            std::cout << indent << "gain: " << both_shift_gain << std::endl;
         }
+        std::cout << std::endl;
 
         std::vector<std::size_t> gains{ref_shift_gain, base_shift_gain, both_shift_gain};
 

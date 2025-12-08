@@ -446,6 +446,20 @@ int main(int argc, char** argv) {
     if(components_detected)
         return 0;
 
+    {// debug
+        std::vector<prova::loga::pattern_sequence> pseqs_test;
+        pseqs_test.push_back(pseqs.at(39));
+        pseqs_test.push_back(pseqs.at(0));
+        prova::loga::automata automata_test(pseqs_test.cbegin(), pseqs_test.cend());
+        automata_test.build();
+        arma::dmat coverage;
+        arma::imat capture;
+        automata_test.generialize(coverage, capture, true);
+        std::ofstream astream("automata_debug.dot");
+        automata_test.graphviz(astream);
+        return 0;
+    }
+
     prova::loga::automata automata(pseqs.cbegin(), pseqs.cend());
     automata.build();
     arma::dmat coverage;
@@ -456,19 +470,19 @@ int main(int argc, char** argv) {
     using intercluster_graph_type = intercluster_graph<std::size_t>;
     intercluster_graph_type intercluster(pseqs.size());
     intercluster.update(coverage, capture, 1, false);
+    intercluster_graph_type::graph_type pattern_generialization_digraph = intercluster.graph();   // vertex properties contain id attribute mapping the vertex to pseqs index
     {
-        auto cluster_graph = intercluster.graph();
         std::ofstream graphml_knn(phase2_graphml_file_path);
-        prova::loga::print_graphml(cluster_graph, graphml_knn);
+        prova::loga::print_graphml(pattern_generialization_digraph, graphml_knn);
     }
     std::vector<int> comp;
-    intercluster_graph_type::graph_type digraph = intercluster.graph();
 
-    std::map<intercluster_graph_type::vertex_type, std::size_t> vertex_components_map;
+
+    std::map<intercluster_graph_type::vertex_type, std::size_t> vertex_components_map;      // maps v -> cluster_id
     prova::loga::community_detection_algorithm algo_phase2 = parse_algo(cli_p2_algo);
-    std::size_t num_components = prova::loga::detect_communities(digraph, algo_phase2, vertex_components_map);
+    std::size_t num_components = prova::loga::detect_communities(pattern_generialization_digraph, algo_phase2, vertex_components_map);
 
-    std::multimap<std::size_t, intercluster_graph_type::vertex_type> components_vertex_map;
+    std::multimap<std::size_t, intercluster_graph_type::vertex_type> components_vertex_map; // maps cluster_id -> v
     for(const auto& [v, c]: vertex_components_map) {
         components_vertex_map.insert(std::make_pair(c, v));
     }
@@ -477,8 +491,8 @@ int main(int argc, char** argv) {
     std::cout << "Summary: " << std::format("{} components", num_components) << std::endl;
     std::cout << "----------------------------" << std::endl;
 
-    std::map<std::size_t, prova::loga::pattern_sequence> component_patterns;
-    std::set<std::size_t> outliers;
+    std::map<std::size_t, prova::loga::pattern_sequence> component_patterns;                // stores merged patterns for the plural communities maps community_id -> merged pattern
+    std::set<std::size_t> singletons;                                                       // stores pseqs indexes of the singleton patterns
     for (auto it = components_vertex_map.cbegin(); it != components_vertex_map.cend(); ) {
         int component_id = it->first;
 
@@ -488,9 +502,9 @@ int main(int argc, char** argv) {
         if (count == 1) {
             // single-vertex component
             std::size_t vi = range.first->second;
-            auto v = boost::vertex(vi, digraph);
-            std::size_t cluster = digraph[v].id;
-            outliers.insert(cluster);
+            auto v = boost::vertex(vi, pattern_generialization_digraph);
+            std::size_t cluster = pattern_generialization_digraph[v].id;
+            singletons.insert(cluster);
 
             it = range.second;
             continue;
@@ -504,20 +518,20 @@ int main(int argc, char** argv) {
         }
 
         std::sort(verts.begin(), verts.end(), [&](intercluster_graph_type::vertex_type u, intercluster_graph_type::vertex_type v) {
-                                                      return boost::in_degree(u, digraph) > boost::in_degree(v, digraph);
+                                                      return boost::in_degree(u, pattern_generialization_digraph) > boost::in_degree(v, pattern_generialization_digraph);
                                                   });
         std::set<std::size_t> ref_members;
         for (std::size_t vi : verts) {
-            auto v = boost::vertex(vi, digraph);
-            std::size_t cluster = digraph[v].id;                // recover cluster id
+            auto v = boost::vertex(vi, pattern_generialization_digraph);
+            std::size_t cluster = pattern_generialization_digraph[v].id;                // recover cluster id
             ref_members.insert(cluster);
         }
 
 
         // now iterate in sorted order
         std::size_t first_i = verts.at(0);
-        auto first_v = boost::vertex(first_i, digraph);
-        std::size_t first_c = digraph[first_v].id;
+        auto first_v = boost::vertex(first_i, pattern_generialization_digraph);
+        std::size_t first_c = pattern_generialization_digraph[first_v].id;
         prova::loga::pattern_sequence merged = automata.merge(first_c, ref_members);
         component_patterns.insert(std::make_pair(component_id, merged));
         std::cout << prova::loga::colors::bright_yellow << "◈" << prova::loga::colors::reset << " T" << component_id << " " << merged;
@@ -536,8 +550,8 @@ int main(int argc, char** argv) {
 
         std::cout << std::endl;
         for (std::size_t vi : verts) {
-            auto v = boost::vertex(vi, digraph);
-            std::size_t cluster = digraph[v].id;                // recover cluster id
+            auto v = boost::vertex(vi, pattern_generialization_digraph);
+            std::size_t cluster = pattern_generialization_digraph[v].id;                // recover cluster id
             const prova::loga::pattern_sequence& pat = pseqs.at(cluster);
             std::cout << "    " << std::setw(4) << cluster << ": " << pat;
             std::cout << std::endl;
@@ -547,16 +561,20 @@ int main(int argc, char** argv) {
         std::cout << std::endl;
     }
 
+    std::vector<prova::loga::pattern_sequence> all_merged_patterns;
     std::cout << "Components list: " << std::endl;
     for(const auto& [component_id, pat]: component_patterns) {
+        all_merged_patterns.push_back(pat);
         std::cout << prova::loga::colors::bright_yellow << "◈" << prova::loga::colors::reset << " T" << component_id << " " << pat << std::endl;
     }
 
-    std::cout << std::format("Singletons: ({})", outliers.size()) << std::endl;
-    for(std::size_t cluster: outliers) {
+    std::cout << std::format("Singletons: ({})", singletons.size()) << std::endl;
+    for(std::size_t cluster: singletons) {
         std::cout << "    " << std::setw(4) << cluster << ": ";
         const auto& pat    = cluster_patterns.at(cluster);
         const auto& sample = cluster_samples.at(cluster);
+        all_merged_patterns.push_back(pseqs.at(cluster));
+
         print_interval_set(std::cout, pat, sample);
         std::cout << std::endl;
 
@@ -565,10 +583,18 @@ int main(int argc, char** argv) {
         prova::loga::automata::thompson_digraph_type subgraph;
         automata.subgraph(cluster, subgraph);
         prova::loga::automata::graphviz(component_subgraph_stream, subgraph);
-
-
-        // automata.directional_subset_generialize();
     }
+
+    { // Inspecting singletons
+        prova::loga::automata subset_automata(all_merged_patterns.cbegin(), all_merged_patterns.cend());
+        subset_automata.build();
+        arma::dmat coverage;
+        arma::imat capture;
+        subset_automata.generialize(coverage, capture, true);
+        std::ofstream astream("singleton.dot");
+        subset_automata.graphviz(astream);
+    }
+
 
     prova::loga::cluster::labels_type components(collection.count());
     for (auto it = components_vertex_map.cbegin(); it != components_vertex_map.cend(); ) {
