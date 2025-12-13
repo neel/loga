@@ -24,7 +24,6 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
-
     env:
       VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }}		# Not used in ubuntu-latest
       VCPKG_DEFAULT_HOST_TRIPLET: ${{ matrix.triplet }}		# Not used in ubuntu-latest
@@ -56,15 +55,23 @@ jobs:
         uses: lukka/get-cmake@latest
 
       - name: Setup vcpkg (Mac)
+        if: matrix.os == 'macos-latest'
         uses: lukka/run-vcpkg@v11
         with:
           vcpkgDirectory: ${{ env.VCPKG_ROOT }}
           vcpkgJsonGlob: '**/vcpkg.json'
 
-      - name: Configure (CMake)
+      - name: Configure CMake (Ubuntu) 
+        if: matrix.os == 'ubuntu-latest'
         shell: bash
         run: |
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Configure CMake (Mac) 
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
 
       - name: Build
         shell: bash
