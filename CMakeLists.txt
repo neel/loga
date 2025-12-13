@@ -24,21 +24,21 @@ endif()
 find_package(cereal REQUIRED)
 find_package(igraph REQUIRED)
 
-if(Armadillo_FOUND AND NOT TARGET Armadillo::Armadillo)
-  if(TARGET armadillo)  # vcpkg / config package usually defines this
+if(NOT TARGET Armadillo::Armadillo)
+  if(TARGET armadillo)  # vcpkg / config package target
     add_library(Armadillo::Armadillo INTERFACE IMPORTED)
     set_property(TARGET Armadillo::Armadillo
       PROPERTY INTERFACE_LINK_LIBRARIES armadillo)
+  elseif(DEFINED ARMADILLO_LIBRARIES OR DEFINED ARMADILLO_INCLUDE_DIRS) # FindArmadillo.cmake style
+    add_library(Armadillo::Armadillo INTERFACE IMPORTED)
+    set_target_properties(Armadillo::Armadillo PROPERTIES
+      INTERFACE_LINK_LIBRARIES     "${ARMADILLO_LIBRARIES}"
+      INTERFACE_INCLUDE_DIRECTORIES "${ARMADILLO_INCLUDE_DIRS}")
   else()
-  add_library(Armadillo::Armadillo INTERFACE IMPORTED)
-  set_target_properties(
-    Armadillo::Armadillo
-    PROPERTIES
-      INTERFACE_LINK_LIBRARIES "${ARMADILLO_LIBRARIES}"
-      INTERFACE_INCLUDE_DIRECTORIES "${ARMADILLO_INCLUDE_DIRS}"
-  )
+    message(FATAL_ERROR "Cannot construct Armadillo::Armadillo: neither 'armadillo' target nor ARMADILLO_LIBRARIES/INCLUDE_DIRS are set")
   endif()
 endif()
+
 
 include_directories(includes)
 
