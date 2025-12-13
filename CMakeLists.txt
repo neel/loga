@@ -21,6 +21,11 @@ find_package(cereal REQUIRED)
 find_package(igraph REQUIRED)
 
 if(Armadillo_FOUND AND NOT TARGET Armadillo::Armadillo)
+  if(TARGET armadillo)  # vcpkg / config package usually defines this
+    add_library(Armadillo::Armadillo INTERFACE IMPORTED)
+    set_property(TARGET Armadillo::Armadillo
+      PROPERTY INTERFACE_LINK_LIBRARIES armadillo)
+  else()
   add_library(Armadillo::Armadillo INTERFACE IMPORTED)
   set_target_properties(
     Armadillo::Armadillo
@@ -28,6 +33,7 @@ if(Armadillo_FOUND AND NOT TARGET Armadillo::Armadillo)
       INTERFACE_LINK_LIBRARIES "${ARMADILLO_LIBRARIES}"
       INTERFACE_INCLUDE_DIRECTORIES "${ARMADILLO_INCLUDE_DIRS}"
   )
+  endif()
 endif()
 
 include_directories(includes)
