@@ -16,7 +16,11 @@ if (MSVC)
 endif()
 
 find_package(Boost REQUIRED COMPONENTS program_options)
-find_package(Armadillo REQUIRED)
+if(DEFINED CMAKE_TOOLCHAIN_FILE AND CMAKE_TOOLCHAIN_FILE MATCHES "vcpkg.cmake")
+  find_package(Armadillo CONFIG REQUIRED)
+else()
+  find_package(Armadillo REQUIRED)
+endif()
 find_package(cereal REQUIRED)
 find_package(igraph REQUIRED)
 
