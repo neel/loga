@@ -47,13 +47,6 @@ C/C++ libraries:
 
 Install dependencies:
 
-##### Ubuntu 
-
-```bash
-sudo apt update
-sudo apt install build-essential cmake git libboost-program-options-dev libarmadillo-dev libcereal-dev libigraph-dev
-```
-
 ##### Arch Linux
 
 ```bash
