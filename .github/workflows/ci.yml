@@ -39,6 +39,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential ninja-build cmake tar git zip unzip curl pkg-config libboost-program-options-dev libarmadillo-dev libcereal-dev 
+
+      - name: Install igraph 1.0.0 from source (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
           sudo apt-get remove -y libigraph-dev || true
           sudo apt-get install -y liblapack-dev libblas-dev
           curl -L https://github.com/igraph/igraph/releases/download/1.0.0/igraph-1.0.0.tar.gz -o igraph-1.0.0.tar.gz
@@ -86,14 +90,14 @@ jobs:
           echo "Installed tree:"
           find stage -maxdepth 3 -type f || true
           if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
-            echo "ldd stage/bin/loga"
+            echo "> ldd stage/bin/loga"
             ldd stage/bin/loga || true
-            echo "ldd stage/lib/libloga.so"
+            echo "> ldd stage/lib/libloga.so"
             ldd stage/lib/libloga.so || true
           else
-            echo "otool -L stage/bin/loga"
+            echo "> otool -L stage/bin/loga"
             otool -L stage/bin/loga || true
-            echo "otool -L stage/lib/libloga.dylib"
+            echo "> otool -L stage/lib/libloga.dylib"
             otool -L stage/lib/libloga.dylib || true
           fi
 
