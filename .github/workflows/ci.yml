@@ -17,18 +17,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-22.04
+          - os: ubuntu-latest
             triplet: x64-linux
           - os: macos-latest
             triplet: x64-osx
-          - os: windows-latest
-            triplet: x64-windows
 
     runs-on: ${{ matrix.os }}
 
     env:
-      VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }}
-      VCPKG_DEFAULT_HOST_TRIPLET: ${{ matrix.triplet }}
+      VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }}		# Not used in ubuntu-latest
+      VCPKG_DEFAULT_HOST_TRIPLET: ${{ matrix.triplet }}		# Not used in ubuntu-latest
 
     steps:
       - name: Checkout
@@ -36,52 +34,72 @@ jobs:
         with:
           submodules: recursive  # harmless even if you don't have submodules
 
-      - name: Setup MSVC (Developer Command Prompt)
-        if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
-
-      - name: Install GCC 13 + gfortran (Ubuntu only)
-        if: matrix.os == 'ubuntu-22.04'
+      - name: Setup Build Essentials in Ubuntu
+        if: matrix.os == 'ubuntu-latest'
         run: |
-          sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
           sudo apt-get update
-          sudo apt-get install -y g++-13 gfortran
+          sudo apt-get install -y build-essential ninja-build cmake tar git zip unzip curl pkg-config libboost-program-options-dev libarmadillo-dev libcereal-dev 
 
-      - name: Install CMake (non-Windows)
-        if: runner.os != 'Windows'
+      - name: Install igraph 1.0.0 from source (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get remove -y libigraph-dev || true
+          sudo apt-get install -y liblapack-dev libblas-dev
+          curl -L https://github.com/igraph/igraph/releases/download/1.0.0/igraph-1.0.0.tar.gz -o igraph-1.0.0.tar.gz
+          tar -xzf igraph-1.0.0.tar.gz
+          cd igraph-1.0.0
+          mkdir build && cd build
+          cmake ..  -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DIGRAPH_ENABLE_R=OFF -DIGRAPH_ENABLE_PYTHON=OFF
+          cmake --build . -- -j"$(nproc)"
+          sudo cmake --install .
+          sudo ldconfig
+
+      - name: Install CMake (Mac)
+        if: matrix.os == 'macos-latest'
         uses: lukka/get-cmake@latest
 
-      - name: Setup vcpkg
+      - name: Setup vcpkg (Mac)
+        if: matrix.os == 'macos-latest'
         uses: lukka/run-vcpkg@v11
         with:
           vcpkgDirectory: ${{ env.VCPKG_ROOT }}
           vcpkgJsonGlob: '**/vcpkg.json'
 
-      - name: Configure (CMake)
+      - name: Configure CMake (Ubuntu) 
+        if: matrix.os == 'ubuntu-latest'
         shell: bash
         run: |
-          # Use GCC 13 on Ubuntu; default compilers elsewhere
-          if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
-            export CC=gcc-13
-            export CXX=g++-13
-          fi
-          cmake -S . -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
-            
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Configure CMake (Mac) 
+        if: matrix.os == 'macos-latest'
+        shell: bash
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+
       - name: Build
         shell: bash
         run: |
-          cmake --build build --config Release -- -v
+          cmake --build build -- -j"$(nproc)"
 
       - name: Install into stage/
+        if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
         shell: bash
         run: |
           cmake --install build --config Release --prefix "${PWD}/stage"
           echo "Installed tree:"
           find stage -maxdepth 3 -type f || true
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            echo "> ldd stage/bin/loga"
+            ldd stage/bin/loga || true
+            echo "> ldd stage/lib/libloga.so"
+            ldd stage/lib/libloga.so || true
+          else
+            echo "> otool -L stage/bin/loga"
+            otool -L stage/bin/loga || true
+            echo "> otool -L stage/lib/libloga.dylib"
+            otool -L stage/lib/libloga.dylib || true
+          fi
 
       - name: Upload stage as artifact
         uses: actions/upload-artifact@v4
