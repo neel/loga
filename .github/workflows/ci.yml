@@ -6,9 +6,7 @@ on:
   pull_request:
 
 env:
-  # vcpkg root inside the checkout
   VCPKG_ROOT: ${{ github.workspace }}/vcpkg
-  # Enable manifest mode & dependency graph features
   VCPKG_FEATURE_FLAGS: manifests,dependencygraph
 
 jobs:
@@ -21,6 +19,8 @@ jobs:
             triplet: x64-linux
           - os: macos-latest
             triplet: x64-osx
+          - os: windows-latest
+            triplet: x64-windows
 
     runs-on: ${{ matrix.os }}
 
@@ -54,12 +54,12 @@ jobs:
           sudo cmake --install .
           sudo ldconfig
 
-      - name: Install CMake (Mac)
-        if: matrix.os == 'macos-latest'
+      - name: Install CMake (Mac & Windows)
+        if: matrix.os == 'macos-latest' || matrix.os == 'windows-latest'
         uses: lukka/get-cmake@latest
 
-      - name: Setup vcpkg (Mac)
-        if: matrix.os == 'macos-latest'
+      - name: Setup vcpkg (Mac & Windows)
+        if: matrix.os == 'macos-latest' || matrix.os == 'windows-latest'
         uses: lukka/run-vcpkg@v11
         with:
           vcpkgDirectory: ${{ env.VCPKG_ROOT }}
@@ -67,39 +67,48 @@ jobs:
 
       - name: Configure CMake (Ubuntu) 
         if: matrix.os == 'ubuntu-latest'
-        shell: bash
         run: |
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 
-      - name: Configure CMake (Mac) 
-        if: matrix.os == 'macos-latest'
-        shell: bash
+      - name: Configure CMake (Mac & Windows) 
+        if: matrix.os == 'macos-latest' || matrix.os == 'windows-latest'
         run: |
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake"
 
       - name: Build
-        shell: bash
         run: |
-          cmake --build build -- -j"$(nproc)"
+          cmake --build build --config Release --parallel
 
       - name: Install into stage/
-        if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
-        shell: bash
         run: |
           cmake --install build --config Release --prefix "${PWD}/stage"
           echo "Installed tree:"
           find stage -maxdepth 3 -type f || true
-          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
-            echo "> ldd stage/bin/loga"
-            ldd stage/bin/loga || true
-            echo "> ldd stage/lib/libloga.so"
-            ldd stage/lib/libloga.so || true
-          else
-            echo "> otool -L stage/bin/loga"
-            otool -L stage/bin/loga || true
-            echo "> otool -L stage/lib/libloga.dylib"
-            otool -L stage/lib/libloga.dylib || true
-          fi
+
+      - name: Print Dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          echo "> ldd stage/bin/loga"
+          ldd stage/bin/loga || true
+          echo "> ldd stage/lib/libloga.so"
+          ldd stage/lib/libloga.so || true
+
+      - name: Print Dependencies (Mac)
+        if: matrix.os == 'macos-latest'
+        run: |
+          echo "> otool -L stage/bin/loga"
+          otool -L stage/bin/loga || true
+          echo "> otool -L stage/lib/libloga.dylib"
+          otool -L stage/lib/libloga.dylib || true
+
+      - name: Print Dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          echo "> dumpbin /DEPENDENTS stage\bin\loga.exe"
+          dumpbin /DEPENDENTS stage\bin\loga.exe
+          echo "> dumpbin /DEPENDENTS stage\lib\loga.dll"
+          dumpbin /DEPENDENTS stage\lib\loga.dll
 
       - name: Upload stage as artifact
         uses: actions/upload-artifact@v4
