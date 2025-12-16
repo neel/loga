@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.6)
+cmake_minimum_required(VERSION 3.21)
 
 project(loga)
 
@@ -129,81 +129,40 @@ install(TARGETS loga_lib loga_exe
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME_DEPENDENCY_SET loga_runtime_deps
 )
 
-set(LOGA_INSTALL_BINDIR "${CMAKE_INSTALL_BINDIR}")
-set(LOGA_INSTALL_LIBDIR "${CMAKE_INSTALL_LIBDIR}")
+install(RUNTIME_DEPENDENCY_SET loga_runtime_deps
+  # DESTINATION ${CMAKE_INSTALL_DATADIR}/loga/deps
+  # You can also use DESTINATION "deps" if you want stage/deps directly
+  DESTINATION "deps"
 
-message(STATUS "LOGA_INSTALL_BINDIR: ${LOGA_INSTALL_BINDIR}")
-message(STATUS "LOGA_INSTALL_LIBDIR: ${LOGA_INSTALL_LIBDIR}")
-
-file(GENERATE
-  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/loga_install_dirs_$<CONFIG>.cmake"
-  CONTENT
-    "set(LOGA_INSTALL_BINDIR \"${LOGA_INSTALL_BINDIR}\")\nset(LOGA_INSTALL_LIBDIR \"${LOGA_INSTALL_LIBDIR}\")\n"
+  # You usually want to exclude system libs; examples:
+  PRE_EXCLUDE_REGEXES
+    "api-ms-win-.*" "ext-ms-win-.*"
+    "KERNEL32\\.dll" "USER32\\.dll" "GDI32\\.dll" "ADVAPI32\\.dll"
+    "SHELL32\\.dll" "OLE32\\.dll" "OLEAUT32\\.dll" "WS2_32\\.dll"
+    "CRYPT32\\.dll" "COMDLG32\\.dll" "bcrypt\\.dll" "ntdll\\.dll"
+  POST_EXCLUDE_REGEXES
+    # Linux system libs
+    ".*/libc\\.so(\\..*)?$"
+    ".*/libm\\.so(\\..*)?$"
+    ".*/libpthread\\.so(\\..*)?$"
+    ".*/libdl\\.so(\\..*)?$"
+    ".*/libgcc_s\\.so(\\..*)?$"
+    ".*/libstdc\\+\\+\\.so(\\..*)?$"
+    ".*/librt\\.so(\\..*)?$"
+    ".*/libutil\\.so(\\..*)?$"
+    ".*/ld-linux-.*\\.so(\\..*)?$"
+    ".*/libz\\.so(\\..*)?$"
+    ".*/libxml2\\.so(\\..*)?$"
+    ".*/libzstd\\.so(\\..*)?$"
+    ".*/libudev\\.so(\\..*)?$"
+    ".*/libevent.*\\.so(\\..*)?$"
+    # macOS system libs
+    "^/System/.*"
+    "^/usr/lib/.*"
 )
-
-file(GENERATE
-  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/loga_runtime_deps_$<CONFIG>.cmake"
-  CONTENT [==[
-    include("${CMAKE_CURRENT_LIST_DIR}/loga_install_dirs_${CMAKE_INSTALL_CONFIG_NAME}.cmake")
-
-    set(_exe "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/${LOGA_INSTALL_BINDIR}/$<TARGET_FILE_NAME:loga_exe>")
-    set(_lib "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/${LOGA_INSTALL_LIBDIR}/$<TARGET_FILE_NAME:loga_lib>")
-
-    get_filename_component(_exe "${_exe}" ABSOLUTE)
-    get_filename_component(_lib "${_lib}" ABSOLUTE)
-
-    message(STATUS "GET_RUNTIME_DEPENDENCIES scanning:")
-    message(STATUS "  exe: ${_exe}")
-    message(STATUS "  lib: ${_lib}")
-
-    file(GET_RUNTIME_DEPENDENCIES
-      EXECUTABLES "${_exe}"
-      LIBRARIES   "${_lib}"
-      RESOLVED_DEPENDENCIES_VAR   LOGA_RESOLVED
-      UNRESOLVED_DEPENDENCIES_VAR LOGA_UNRESOLVED
-      POST_EXCLUDE_REGEXES
-         ".*/libc\\.so(\\..*)?$"
-         ".*/libm\\.so(\\..*)?$"
-         ".*/libpthread\\.so(\\..*)?$"
-         ".*/libdl\\.so(\\..*)?$"
-         ".*/libgcc_s\\.so(\\..*)?$"
-         ".*/libstdc\\+\\+\\.so(\\..*)?$"
-         ".*/librt\\.so(\\..*)?$"
-         ".*/libutil\\.so(\\..*)?$"
-         ".*/ld-linux-.*\\.so(\\..*)?$"
-         ".*/libz\\.so(\\..*)?$"
-         ".*/libxml2\\.so(\\..*)?$"
-         ".*/libzstd\\.so(\\..*)?$"
-         ".*/libudev\\.so(\\..*)?$"
-         ".*/libevent.*\\.so(\\..*)?$"
-    )
-
-    message(STATUS "Loga runtime deps (resolved):")
-    foreach(d IN LISTS LOGA_RESOLVED)
-      message(STATUS "  ${d}")
-    endforeach()
-
-    if(LOGA_UNRESOLVED)
-      message(WARNING "Loga runtime deps (unresolved): ${LOGA_UNRESOLVED}")
-    endif()
-]==]
-)
-
-file(GENERATE
-  OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/loga_runtime_deps_dispatch.cmake"
-  CONTENT [==[
-if(NOT DEFINED CMAKE_INSTALL_CONFIG_NAME OR CMAKE_INSTALL_CONFIG_NAME STREQUAL "")
-  set(CMAKE_INSTALL_CONFIG_NAME "Release")
-endif()
-
-include("${CMAKE_CURRENT_LIST_DIR}/loga_runtime_deps_${CMAKE_INSTALL_CONFIG_NAME}.cmake")
-]==]
-)
-
-# 4) Run the dispatcher at install time (no install(CODE))
-install(SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/loga_runtime_deps_dispatch.cmake")
 
 install(FILES ${INCLUDES}
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/loga

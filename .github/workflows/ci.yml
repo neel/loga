@@ -81,7 +81,7 @@ jobs:
 
       - name: Install into stage/
         run: |
-          cmake --install build --config Release --prefix "${PWD}/stage"
+          cmake --install build --config Release --prefix "${{ github.workspace }}/stage"
           echo "Installed tree:"
           find stage -maxdepth 3 -type f || true
 
@@ -89,17 +89,17 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           echo "> ldd stage/bin/loga"
-          ldd stage/bin/loga || true
+          ldd stage/bin/loga | tee stage/loga.exe.deps.txt || true
           echo "> ldd stage/lib/libloga.so"
-          ldd stage/lib/libloga.so || true
+          ldd stage/lib/libloga.so | tee stage/libloga.deps.txt || true
 
       - name: Print Dependencies (Mac)
         if: matrix.os == 'macos-latest'
         run: |
           echo "> otool -L stage/bin/loga"
-          otool -L stage/bin/loga || true
+          otool -L stage/bin/loga | tee stage/loga.exe.deps.txt || true
           echo "> otool -L stage/lib/libloga.dylib"
-          otool -L stage/lib/libloga.dylib || true
+          otool -L stage/lib/libloga.dylib | tee stage/libloga.deps.txt || tru
 
       - name: Setup MSVC dev cmd
         if: matrix.os == 'windows-latest'
@@ -112,9 +112,9 @@ jobs:
         shell: pwsh
         run: |
           echo "> dumpbin /DEPENDENTS stage\bin\loga.exe"
-          dumpbin /DEPENDENTS stage\bin\loga.exe
+          dumpbin /DEPENDENTS stage\bin\loga.exe | Tee-Object -FilePath stage\loga.exe.deps.txt
           echo "> dumpbin /DEPENDENTS stage\lib\loga.dll"
-          dumpbin /DEPENDENTS stage\lib\loga.dll
+          dumpbin /DEPENDENTS stage\lib\loga.dll | Tee-Object -FilePath stage\libloga.deps.txt
 
       - name: Upload stage as artifact
         uses: actions/upload-artifact@v4
