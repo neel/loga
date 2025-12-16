@@ -1,0 +1,19 @@
+#!/usr/bin/env sh
+set -eu
+
+# Directory where this script lives
+SELF_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+
+BIN="$SELF_DIR/bin/loga"
+LIB="$SELF_DIR/lib"
+
+# Set runtime library search path for this process only
+if [ -d "$LIB" ]; then
+  if [ "$(uname -s)" = "Darwin" ]; then
+    export DYLD_LIBRARY_PATH="$LIB${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+  else
+    export LD_LIBRARY_PATH="$LIB${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+  fi
+fi
+
+exec "$BIN" "$@"

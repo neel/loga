@@ -132,22 +132,33 @@ install(TARGETS loga_lib loga_exe
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
+set(LOGA_RUNTIME_DEP_DIRS "")
+
+# On Windows, help CMake find DLLs in common places
 if(WIN32)
-  set(_allow_unresolved ALLOW_UNRESOLVED_DEPENDENCIES)
+  list(APPEND LOGA_RUNTIME_DEP_DIRS
+    "$ENV{SystemRoot}/System32"
+    "$ENV{SystemRoot}/SysWOW64"
+  )
+endif()
+
+if(DEFINED VCPKG_INSTALLED_DIR AND DEFINED VCPKG_TARGET_TRIPLET)
+  list(APPEND LOGA_RUNTIME_DEP_DIRS
+    "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin"
+  )
 endif()
 
 install(RUNTIME_DEPENDENCY_SET loga_runtime_deps
   # DESTINATION ${CMAKE_INSTALL_DATADIR}/loga/deps
   # You can also use DESTINATION "deps" if you want stage/deps directly
   DESTINATION "deps"
-  ${_allow_unresolved}
   # You usually want to exclude system libs; examples:
   PRE_EXCLUDE_REGEXES
-    "api-ms-win-.*" "ext-ms-win-.*"
-    "KERNEL32\\.dll" "USER32\\.dll" "GDI32\\.dll" "ADVAPI32\\.dll"
-    "SHELL32\\.dll" "OLE32\\.dll" "OLEAUT32\\.dll" "WS2_32\\.dll"
-    "CRYPT32\\.dll" "COMDLG32\\.dll" "bcrypt\\.dll" "ntdll\\.dll"
+    "^(api|ext)-ms-.*"
   POST_EXCLUDE_REGEXES
+    # Windows System libs
+    "^(KERNEL32|USER32|GDI32|ADVAPI32|SHELL32|OLE32|OLEAUT32|WS2_32|CRYPT32|COMDLG32|bcrypt|ntdll)\\.dll$"
+    "^(AzureAttestManager|AzureAttestNormal|HvsiFileTrust|PdmUtilities|WTDSENSOR|wpaxholder|wtdccm)\\.dll$"
     # Linux system libs
     ".*/libc\\.so(\\..*)?$"
     ".*/libm\\.so(\\..*)?$"
@@ -166,8 +177,24 @@ install(RUNTIME_DEPENDENCY_SET loga_runtime_deps
     # macOS system libs
     "^/System/.*"
     "^/usr/lib/.*"
+
+  DIRECTORIES 
+    ${LOGA_RUNTIME_DEP_DIRS}
 )
 
 install(FILES ${INCLUDES}
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/loga
+)
+
+# Install wrappers into the install-prefix root (i.e., stage/)
+if(WIN32)
+  install(FILES "${CMAKE_SOURCE_DIR}/pack/loga.cmd" DESTINATION ".")
+else()
+  install(PROGRAMS "${CMAKE_SOURCE_DIR}/pack/loga" DESTINATION ".")
+endif()
+
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/logs/"
+  DESTINATION "logs"
+  FILES_MATCHING
+  PATTERN "*"
 )
