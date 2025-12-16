@@ -34,11 +34,18 @@ jobs:
         with:
           submodules: recursive  # harmless even if you don't have submodules
 
-      - name: Setup Build Essentials in Ubuntu
+      - name: Setup Build Essentials (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential ninja-build cmake tar git zip unzip curl pkg-config libboost-program-options-dev libarmadillo-dev libcereal-dev 
+
+      - name: Install CMake (Mac & Windows)
+        if: matrix.os == 'macos-latest' || matrix.os == 'windows-latest'
+        uses: lukka/get-cmake@latest
+
+      - name: Show CMake version
+        run: cmake --version
 
       - name: Install igraph 1.0.0 from source (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
@@ -53,10 +60,6 @@ jobs:
           cmake --build . -- -j"$(nproc)"
           sudo cmake --install .
           sudo ldconfig
-
-      - name: Install CMake (Mac & Windows)
-        if: matrix.os == 'macos-latest' || matrix.os == 'windows-latest'
-        uses: lukka/get-cmake@latest
 
       - name: Setup vcpkg (Mac & Windows)
         if: matrix.os == 'macos-latest' || matrix.os == 'windows-latest'
