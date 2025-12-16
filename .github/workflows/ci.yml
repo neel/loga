@@ -101,6 +101,12 @@ jobs:
           echo "> otool -L stage/lib/libloga.dylib"
           otool -L stage/lib/libloga.dylib || true
 
+      - name: Setup MSVC dev cmd
+        if: matrix.os == 'windows-latest'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+          
       - name: Print Dependencies (Windows)
         if: matrix.os == 'windows-latest'
         shell: pwsh
