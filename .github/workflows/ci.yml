@@ -85,8 +85,6 @@ jobs:
       - name: Install into stage/
         run: |
           cmake --install build --config Release --prefix "${{ github.workspace }}/stage"
-          echo "Installed tree:"
-          find stage -maxdepth 3 -type f || true
 
       - name: Print Dependencies (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
@@ -117,7 +115,7 @@ jobs:
           echo "> dumpbin /DEPENDENTS stage\bin\loga.exe"
           dumpbin /DEPENDENTS stage\bin\loga.exe | Tee-Object -FilePath stage\loga.exe.deps.txt
           echo "> dumpbin /DEPENDENTS stage\lib\loga.dll"
-          dumpbin /DEPENDENTS stage\lib\loga.dll | Tee-Object -FilePath stage\libloga.deps.txt
+          dumpbin /DEPENDENTS stage\bin\loga.dll | Tee-Object -FilePath stage\libloga.deps.txt
 
       - name: Upload stage as artifact
         uses: actions/upload-artifact@v4

@@ -132,11 +132,15 @@ install(TARGETS loga_lib loga_exe
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
+if(WIN32)
+  set(_allow_unresolved ALLOW_UNRESOLVED_DEPENDENCIES)
+endif()
+
 install(RUNTIME_DEPENDENCY_SET loga_runtime_deps
   # DESTINATION ${CMAKE_INSTALL_DATADIR}/loga/deps
   # You can also use DESTINATION "deps" if you want stage/deps directly
   DESTINATION "deps"
-
+  ${_allow_unresolved}
   # You usually want to exclude system libs; examples:
   PRE_EXCLUDE_REGEXES
     "api-ms-win-.*" "ext-ms-win-.*"
