@@ -20,13 +20,15 @@ jobs:
           - os: macos-latest
             triplet: x64-osx
           - os: windows-latest
-            triplet: x64-windows
+            triplet: x64-windows-static-md
+            host_triplet: x64-windows
 
     runs-on: ${{ matrix.os }}
 
     env:
-      VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }}		# Not used in ubuntu-latest
-      VCPKG_DEFAULT_HOST_TRIPLET: ${{ matrix.triplet }}		# Not used in ubuntu-latest
+      VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }}
+      VCPKG_DEFAULT_HOST_TRIPLET: ${{ matrix.host_triplet }}
+      VCPKG_TARGET_TRIPLET: ${{ matrix.triplet }}
 
     steps:
       - name: Checkout
@@ -73,10 +75,19 @@ jobs:
         run: |
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 
-      - name: Configure CMake (Mac & Windows) 
-        if: matrix.os == 'macos-latest' || matrix.os == 'windows-latest'
+      - name: Configure CMake (Mac) 
+        if: matrix.os == 'macos-latest'
         run: |
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake"
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+           -DCMAKE_TOOLCHAIN_FILE="${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake"
+
+      - name: Configure CMake (Windows) 
+        if: matrix.os == 'windows-latest'
+        run: |
+          cmake -S . -B build -A x64 `
+          -DCMAKE_TOOLCHAIN_FILE="${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake" `
+          -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }} `
+          -DVCPKG_HOST_TRIPLET=${{ matrix.host_triplet }}
 
       - name: Build
         run: |
