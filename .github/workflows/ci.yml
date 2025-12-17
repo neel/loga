@@ -111,7 +111,7 @@ jobs:
           echo "> otool -L stage/bin/loga"
           otool -L stage/bin/loga | tee stage/loga.exe.deps.txt || true
           echo "> otool -L stage/lib/libloga.dylib"
-          otool -L stage/lib/libloga.dylib | tee stage/libloga.deps.txt || tru
+          otool -L stage/lib/libloga.dylib | tee stage/libloga.deps.txt || true
 
       - name: Setup MSVC dev cmd
         if: matrix.os == 'windows-latest'
