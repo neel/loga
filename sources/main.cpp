@@ -206,16 +206,16 @@ int main(int argc, char** argv) {
 
     prova::loga::tokenized_distance distance(collection.count());
     if(std::filesystem::exists(dist_file_path)){
-        std::ifstream dist_file(dist_file_path);
+        std::ifstream dist_file(dist_file_path, std::ios::binary);
         if(!distance.load(dist_file)){
-            std::cout << "failed to load dmat" << std::endl;
+            std::cout << "failed to load dmat from " << dist_file_path << std::endl;
             return 1;
         }
     } else {
         distance.compute(collection);
-        std::ofstream dist_file(dist_file_path);
+        std::ofstream dist_file(dist_file_path, std::ios::binary);
         if(!distance.save(dist_file)){
-            std::cout << "failed to save dmat" << std::endl;
+            std::cout << "failed to save dmat to " << dist_file_path << std::endl;
             return 1;
         }
     }
@@ -230,7 +230,7 @@ int main(int argc, char** argv) {
     }
     arma::Row<std::size_t> labels(collection.count());
     if(std::filesystem::exists(labels_file_path)){
-        std::ifstream labels_file(labels_file_path);
+        std::ifstream labels_file(labels_file_path, std::ios::binary);
         if(!labels.load(labels_file)){
             std::cout << "failed to load labels" << std::endl;
             return 1;
@@ -244,7 +244,7 @@ int main(int argc, char** argv) {
             const auto& vp = bgl_graph[v];
             labels[vp.id] = vertex_cluster_map.at(v);
         }
-        std::ofstream labels_file(labels_file_path);
+        std::ofstream labels_file(labels_file_path, std::ios::binary);
         if(!labels.save(labels_file)){
             std::cout << "failed to save labels" << std::endl;
             return 1;
@@ -254,7 +254,7 @@ int main(int argc, char** argv) {
     bool components_detected = false;
     if(std::filesystem::exists(components_file_path)){
         arma::Row<std::size_t> components(collection.count());
-        std::ifstream components_file(components_file_path);
+        std::ifstream components_file(components_file_path, std::ios::binary);
         if(!components.load(components_file)){
             std::cout << "failed to load components" << std::endl;
             return 1;
@@ -404,7 +404,7 @@ int main(int argc, char** argv) {
     }
 
     if(!components_detected){
-        std::ofstream archive_file(archive_file_path);
+        std::ofstream archive_file(archive_file_path, std::ios::binary);
         cereal::PortableBinaryOutputArchive archive(archive_file);
         archive(all_paths);
     }
@@ -451,14 +451,14 @@ int main(int argc, char** argv) {
     arma::dmat coverage;
     arma::imat capture;
     automata.generialize(coverage, capture, false);
-    std::ofstream astream(automata_dot_file_path);
+    std::ofstream astream(automata_dot_file_path, std::ios::binary);
     automata.graphviz(astream);
     using intercluster_graph_type = intercluster_graph<std::size_t>;
     intercluster_graph_type intercluster(pseqs.size());
     intercluster.update(coverage, capture, 1, false);
     {
         auto cluster_graph = intercluster.graph();
-        std::ofstream graphml_knn(phase2_graphml_file_path);
+        std::ofstream graphml_knn(phase2_graphml_file_path, std::ios::binary);
         prova::loga::print_graphml(cluster_graph, graphml_knn);
     }
     std::vector<int> comp;
@@ -528,7 +528,7 @@ int main(int argc, char** argv) {
             std::set<std::size_t> members = ref_members;
             members.insert(first_c);
             auto component_subgraph = output_dir / std::format("{}.component.{}.automata.dot", log_name, first_c);
-            std::ofstream component_subgraph_stream(component_subgraph);
+            std::ofstream component_subgraph_stream(component_subgraph, std::ios::binary);
             prova::loga::automata::thompson_digraph_type subgraph;
             automata.subgraph(ref_members, subgraph);
             prova::loga::automata::graphviz(component_subgraph_stream, subgraph);
@@ -561,7 +561,7 @@ int main(int argc, char** argv) {
         std::cout << std::endl;
 
         auto component_subgraph = output_dir / std::format("{}.component.{}.automata.dot", log_name, cluster);
-        std::ofstream component_subgraph_stream(component_subgraph);
+        std::ofstream component_subgraph_stream(component_subgraph, std::ios::binary);
         prova::loga::automata::thompson_digraph_type subgraph;
         automata.subgraph(cluster, subgraph);
         prova::loga::automata::graphviz(component_subgraph_stream, subgraph);
@@ -586,7 +586,7 @@ int main(int argc, char** argv) {
         }
         it = range.second;
     }
-    std::ofstream components_file(components_file_path);
+    std::ofstream components_file(components_file_path, std::ios::binary);
     if(!components.save(components_file)){
         std::cout << "failed to save components" << std::endl;
         return 1;
