@@ -155,10 +155,10 @@ install(RUNTIME_DEPENDENCY_SET loga_runtime_deps
   # You usually want to exclude system libs; examples:
   PRE_EXCLUDE_REGEXES
     "^(api|ext)-ms-.*"
+    "^(AzureAttestManager|AzureAttestNormal|HvsiFileTrust|PdmUtilities|WTDSENSOR|wpaxholder|wtdccm)\\.dll$"
   POST_EXCLUDE_REGEXES
     # Windows System libs
     "^(KERNEL32|USER32|GDI32|ADVAPI32|SHELL32|OLE32|OLEAUT32|WS2_32|CRYPT32|COMDLG32|bcrypt|ntdll)\\.dll$"
-    "^(AzureAttestManager|AzureAttestNormal|HvsiFileTrust|PdmUtilities|WTDSENSOR|wpaxholder|wtdccm)\\.dll$"
     # Linux system libs
     ".*/libc\\.so(\\..*)?$"
     ".*/libm\\.so(\\..*)?$"
