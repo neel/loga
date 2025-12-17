@@ -20,7 +20,7 @@ a pipeline of sequence-alignment–based operations to align log messages and th
   - [Build using vcpkg](#build-using-vcpkg)
     - [Compile](#compile)
     - [Compile (Windows without MinGW)](#compile-windows-without-mingw)
-- [Run prebuilt binaries (GitHub Actions artifacts)](#run-prebuilt-binaries-github-actions-artifacts)
+- [Run prebuilt binaries](#run-prebuilt-binaries)
 
 
 ## Usage
@@ -138,7 +138,7 @@ cmake --build build --config Release --parallel
 ```
 
 
-## Run prebuilt binaries (GitHub Actions artifacts)
+## Run prebuilt binaries 
 
 If you don’t want to build from source, you can download the prebuilt binaries produced by the GitHub Actions CI.
 
@@ -193,7 +193,7 @@ cd stage
 > **Note: missing shared library errors (runtime dependencies)**
 >
 > On some machines, `loga` may fail at runtime due to a missing shared library (e.g., `.so` on Linux, `.dylib` on macOS, or `.dll` on Windows).
-> This does **not** necessarily mean the artifact is incomplete—CI often bundles the required libraries under `stage/deps/`.
+> However, some resolved dependencies are stored under `stage/deps/` while preparing the artifact.
 >
 > **Fix (Linux / macOS):**
 > 1. Read the error message to find the missing library name (e.g., `libXYZ.so` / `libXYZ.dylib`).
