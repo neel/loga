@@ -20,6 +20,7 @@ a pipeline of sequence-alignment–based operations to align log messages and th
   - [Build using vcpkg](#build-using-vcpkg)
     - [Compile](#compile)
     - [Compile (Windows without MinGW)](#compile-windows-without-mingw)
+- [Run prebuilt binaries (GitHub Actions artifacts)](#run-prebuilt-binaries-github-actions-artifacts)
 
 
 ## Usage
@@ -135,3 +136,74 @@ cmake -S .. -B . -DCMAKE_BUILD_TYPE=Release "-DCMAKE_TOOLCHAIN_FILE=../../vcpkg/
 
 cmake --build build --config Release --parallel
 ```
+
+
+## Run prebuilt binaries (GitHub Actions artifacts)
+
+If you don’t want to build from source, you can download the prebuilt binaries produced by the GitHub Actions CI.
+
+### Download the artifact
+
+1. Go to the repository **Actions** tab.
+2. Open the latest successful run of the CI workflow.
+3. In the **Artifacts** section, download the one that matches your OS (names may vary), e.g.:
+   - `loga-ubuntu-latest-stage`
+   - `loga-windows-latest-stage`
+   - `loga-macos-latest-stage`
+
+After extracting the ZIP, you should see a `stage/` directory that contains:
+- `stage/bin/` (the `loga` executable)
+- `stage/lib/` (runtime libraries bundled by CI)
+- `stage/deps/` (additional runtime libraries bundled by CI)
+- a small launcher script in `stage/`:
+  - Linux/macOS: `loga` (shell script)
+  - Windows: `loga.cmd` (batch script)
+
+### Run it
+
+#### Linux
+
+```bash
+unzip loga-ubuntu-latest-stage.zip
+cd stage
+./loga ./logs/Apache.log
+```
+
+#### MacOS
+
+```bash
+unzip loga-macos-latest-stage.zip
+cd stage
+
+# If macOS blocks the binary after download/unzip:
+xattr -dr com.apple.quarantine .
+
+./loga ./logs/Apache.log
+```
+
+#### Windows (PowerShell)
+
+Download and extract loga-windows-latest-stage.zip
+
+```
+cd stage
+.\loga .\logs\Apache.log
+```
+
+> **Note: missing shared library errors (runtime dependencies)**
+>
+> On some machines, `loga` may fail at runtime due to a missing shared library (e.g., `.so` on Linux, `.dylib` on macOS, or `.dll` on Windows).
+> This does **not** necessarily mean the artifact is incomplete—CI often bundles the required libraries under `stage/deps/`.
+>
+> **Fix (Linux / macOS):**
+> 1. Read the error message to find the missing library name (e.g., `libXYZ.so` / `libXYZ.dylib`).
+> 2. Check if that file exists in `stage/deps/`.
+> 3. Copy it into `stage/lib/`.
+> 4. Run again. If another library is reported missing, repeat until it runs cleanly.
+>
+> **Fix (Windows):**
+> - If `loga` fails silently or you don’t get a clear “missing DLL” message, use **Dependencies**:
+>   - https://github.com/lucasg/Dependencies
+> - Open `stage/bin/loga.exe` (and if applicable `stage/bin/loga.dll`) in Dependencies.
+> - Identify the missing `.dll`, then copy it from `stage/deps/` to `stage/lib/`.
+> - Retry and repeat until all dependencies are resolved.
