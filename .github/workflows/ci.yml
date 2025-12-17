@@ -18,7 +18,7 @@ jobs:
           - os: ubuntu-latest
             triplet: x64-linux
           - os: macos-latest
-            triplet: x64-osx
+            triplet: arm64-osx
           - os: windows-latest
             triplet: x64-windows-static-md
             host_triplet: x64-windows

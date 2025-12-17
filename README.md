@@ -70,7 +70,7 @@ cmake --build .
 
 ```bash
 git clone https://github.com/microsoft/vcpkg.git
-
+cd vcpkg
 ./bootstrap-vcpkg.sh   # Linux or Mac
 .\bootstrap-vcpkg.bat  # Windows
 ```
@@ -83,8 +83,13 @@ cd loga
 
 mkdir build
 cd build
-cmake .. \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_TOOLCHAIN_FILE=../../vcpkg/scripts/buildsystems/vcpkg.cmake
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=../../vcpkg/scripts/buildsystems/vcpkg.cmake
 cmake --build .
+```
+
+#### Compile (Windows without MinGW) 
+
+```bash
+cmake -S .. -B . -DCMAKE_BUILD_TYPE=Release "-DCMAKE_TOOLCHAIN_FILE=../../vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows-static-md -DVCPKG_HOST_TRIPLET=x64-windows
+cmake --build build --config Release --parallel
 ```
