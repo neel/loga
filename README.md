@@ -6,6 +6,8 @@ a pipeline of sequence-alignment–based operations to align log messages and th
 
 > Initial code extracted and refactored from the [`neel/prova`](https://github.com/neel/prova) repository.
 
+> The example log files in logs/ directory are from [`logpai/loghub`](https://github.com/logpai/loghub) repository which are freely available for research or academic work. 
+
 
 ## Table of Contents
 
@@ -195,8 +197,8 @@ cd stage
 > On some machines, `loga` may fail at runtime due to a missing shared library (e.g., `.so` on Linux, `.dylib` on macOS, or `.dll` on Windows).
 > However, some resolved dependencies are stored under `stage/deps/` while preparing the artifact.
 >
-> **Fix (Linux / macOS):**
-> 1. Read the error message to find the missing library name (e.g., `libXYZ.so` / `libXYZ.dylib`).
+> **Fix:**
+> 1. Find the missing library name (e.g., `libXYZ.so` / `libXYZ.dylib`).
 > 2. Check if that file exists in `stage/deps/`.
 > 3. Copy it into `stage/lib/`.
 > 4. Run again. If another library is reported missing, repeat until it runs cleanly.
@@ -204,6 +206,6 @@ cd stage
 > **Fix (Windows):**
 > - If `loga` fails silently or you don’t get a clear “missing DLL” message, use **Dependencies**:
 >   - https://github.com/lucasg/Dependencies
-> - Open `stage/bin/loga.exe` (and if applicable `stage/bin/loga.dll`) in Dependencies.
+> - Open `stage/bin/loga.exe` and `stage/bin/loga.dll` in Dependencies.
 > - Identify the missing `.dll`, then copy it from `stage/deps/` to `stage/lib/`.
 > - Retry and repeat until all dependencies are resolved.
